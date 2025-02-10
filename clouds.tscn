@@ -1,0 +1,62 @@
+[gd_scene load_steps=12 format=3 uid="uid://8whsprviu0co"]
+
+[ext_resource type="Shader" uid="uid://beb3whkj5pnaq" path="res://cloudFog.gdshader" id="1_dl3so"]
+[ext_resource type="NoiseTexture3D" uid="uid://bopg2yafnugp6" path="res://clouds noise.tres" id="2_bs8eb"]
+[ext_resource type="Texture2D" uid="uid://cm417hk7yxump" path="res://SkySeries Freebie/FreebieHdri/DayInTheClouds4k.hdr" id="2_potmy"]
+
+[sub_resource type="Gradient" id="Gradient_potmy"]
+offsets = PackedFloat32Array(0, 0.479042, 0.871257, 1)
+colors = PackedColorArray(0, 0, 0, 1, 0.144384, 0.144384, 0.144384, 1, 0.643713, 0.643713, 0.643713, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_bs8eb"]
+gradient = SubResource("Gradient_potmy")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_x36bk"]
+shader = ExtResource("1_dl3so")
+shader_parameter/treshold = 0.43
+shader_parameter/colorRamp = SubResource("GradientTexture1D_bs8eb")
+shader_parameter/albedo = Color(1, 1, 1, 1)
+shader_parameter/emission = Color(0.347817, 0.347817, 0.347817, 1)
+shader_parameter/scale = 5.475
+shader_parameter/offset = Vector3(0, 0, 0.985)
+shader_parameter/noise = ExtResource("2_bs8eb")
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_x36bk"]
+panorama = ExtResource("2_potmy")
+
+[sub_resource type="Sky" id="Sky_o0mjc"]
+sky_material = SubResource("PanoramaSkyMaterial_x36bk")
+
+[sub_resource type="Environment" id="Environment_ygvev"]
+background_mode = 2
+sky = SubResource("Sky_o0mjc")
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.0
+volumetric_fog_emission = Color(1, 1, 1, 1)
+volumetric_fog_length = 10064.8
+volumetric_fog_ambient_inject = 0.35
+volumetric_fog_temporal_reprojection_amount = 0.853
+
+[sub_resource type="CameraAttributesPractical" id="CameraAttributesPractical_0udgr"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_vxfby"]
+
+[node name="Clouds" type="Node2D"]
+
+[node name="Node3D" type="Node3D" parent="."]
+
+[node name="FogVolume" type="FogVolume" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6709.53, -301.265, -2811.44)
+size = Vector3(8464.55, 4352.06, 8145.68)
+material = SubResource("ShaderMaterial_x36bk")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Node3D"]
+environment = SubResource("Environment_ygvev")
+camera_attributes = SubResource("CameraAttributesPractical_0udgr")
+
+[node name="Camera3D" type="Camera3D" parent="Node3D"]
+transform = Transform3D(1, 0, 0, 0, 0.746522, -0.665361, 0, 0.665361, 0.746522, 0, 0.551941, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Node3D"]
+transform = Transform3D(7.29305, 0, 0, 0, 1, 0, 0, 0, -16.7083, 0, 0, 0)
+mesh = SubResource("PlaneMesh_vxfby")

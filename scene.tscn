@@ -1,0 +1,43 @@
+[gd_scene load_steps=7 format=3 uid="uid://cwttclmla14nn"]
+
+[ext_resource type="Shader" uid="uid://beb3whkj5pnaq" path="res://cloudFog.gdshader" id="1_ulcgi"]
+
+[sub_resource type="Environment" id="Environment_ulcgi"]
+background_mode = 1
+background_color = Color(0.786086, 0.513807, 0.981528, 1)
+ambient_light_color = Color(0.577008, 0.577008, 0.577008, 1)
+volumetric_fog_enabled = true
+volumetric_fog_density = 0.0
+volumetric_fog_emission = Color(1, 1, 1, 1)
+volumetric_fog_gi_inject = 16.0
+volumetric_fog_anisotropy = 0.9
+volumetric_fog_length = 1467.6
+volumetric_fog_ambient_inject = 0.17
+volumetric_fog_temporal_reprojection_amount = 0.99
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_ulcgi"]
+frequency = 0.0015
+
+[sub_resource type="NoiseTexture3D" id="NoiseTexture3D_nxogm"]
+noise = SubResource("FastNoiseLite_ulcgi")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_ulcgi"]
+shader = ExtResource("1_ulcgi")
+shader_parameter/albedo = Vector3(1, 1, 1)
+shader_parameter/noise = SubResource("NoiseTexture3D_nxogm")
+
+[sub_resource type="BoxMesh" id="BoxMesh_3253y"]
+
+[node name="Scene" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_ulcgi")
+
+[node name="FogVolume" type="FogVolume" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.822815, 73.5135, -11.4053)
+size = Vector3(94.8909, 13.8076, 135.276)
+material = SubResource("ShaderMaterial_ulcgi")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(823.699, 0, 0, 0, 1, 0, 0, 0, 485.995, 0, -5.12902, 0)
+mesh = SubResource("BoxMesh_3253y")
