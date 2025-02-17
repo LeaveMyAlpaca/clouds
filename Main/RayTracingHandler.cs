@@ -15,6 +15,7 @@ public partial class RayTracingHandler : Node
     [Export] float rayMarchStepSize;
     [Export] float alphaCutOff;
     [Export] float alphaModifier;
+    [Export] float detailNoiseModifier;
 
     Godot.Collections.Array<Image> noiseData;
 
@@ -243,7 +244,7 @@ public partial class RayTracingHandler : Node
                           .. BitConverter.GetBytes(rayMarchStepSize),
                           .. BitConverter.GetBytes(alphaCutOff),
                           .. BitConverter.GetBytes(alphaModifier),
-
+                          .. BitConverter.GetBytes(detailNoiseModifier),
         ];
         var cloudSettingsBuffer = rd.StorageBufferCreate((uint)cloudSettingsBytes.Count, cloudSettingsBytes.ToArray());
         cloudSettingsUniform = new()

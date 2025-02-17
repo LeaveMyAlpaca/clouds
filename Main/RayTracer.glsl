@@ -38,6 +38,7 @@ layout(set = 0, binding = 8, std430) restrict readonly buffer CloudSettings {
 float rayMarchStepSize;
 float alphaCutOff;
 float alphaModifier;
+float detailNoiseModifier;
 }
 cloudSettings;
 
@@ -147,7 +148,9 @@ return uv;
 
 float SampleNoise(vec3 pos) {
 vec4 color = texture(noiseSampler, ConvertWorldToNoiseTexturePosition(pos));
-return (color.r + color.g) / 2;
+float density = (color.r * cloudSettings.detailNoiseModifier + color.g) / 2;
+if(density > cloudSettings.alphaCutOff) return density;
+return 0;
 }
 
 float SampleCloudDensity(vec3 origin, float dist, vec3 direction) {
@@ -201,7 +204,6 @@ float dist = intersection.exitDistance - intersection.entryDistance;
 vec3 direction = ray.direction;
 
 float density = SampleCloudDensity(origin, dist, direction);
-
 float alpha = cloudSettings.alphaModifier * density * cloudSettings.rayMarchStepSize;
 
 if(alpha > cloudSettings.alphaCutOff) {
