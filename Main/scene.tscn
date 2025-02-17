@@ -5,7 +5,7 @@
 [ext_resource type="Script" uid="uid://7oi60kd7spx1" path="res://Main/free_look_camera.gd" id="2_m7jmp"]
 [ext_resource type="RDShaderFile" uid="uid://b1p4t6xhp3v00" path="res://Main/RayTracer.glsl" id="3_u3cyc"]
 [ext_resource type="Script" uid="uid://5upijui74uda" path="res://Main/ComputeOutput.cs" id="4_m7jmp"]
-[ext_resource type="ImageTexture3D" uid="uid://c6iproohmnehk" path="res://high resr noise.tres" id="6_jayku"]
+[ext_resource type="ImageTexture3D" uid="uid://dkfwwab226yti" path="res://noise 3d.tres" id="6_jayku"]
 
 [node name="scene" type="Node3D"]
 
@@ -13,10 +13,10 @@
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45046, 0)
 
 [node name="Target" type="Node3D" parent="."]
-transform = Transform3D(80, 0, 0, 0, 80, 0, 0, 0, 80, 0, 0, -72.3542)
+transform = Transform3D(480, 0, 0, 0, 170.31, 0, 0, 0, 480, -32.8607, 0, -472.342)
 script = ExtResource("1_nxogm")
-boxMin = Vector3(-40, -40, -112.354)
-boxMax = Vector3(40, 40, -32.3542)
+boxMin = Vector3(-272.861, -85.155, -712.342)
+boxMax = Vector3(207.139, 85.155, -232.342)
 DrawDebug = true
 
 [node name="Camera3D" type="Camera3D" parent="."]
@@ -40,5 +40,9 @@ rayTarget = NodePath("../../Target")
 light = NodePath("../../DirectionalLight3D")
 noiseTexture = ExtResource("6_jayku")
 rayMarchStepSize = 0.1
-alphaCutOff = 0.1
-alphaModifier = 0.01
+alphaCutOff = 0.25
+alphaModifier = 0.03
+detailNoiseModifier = 0.01
+chunkSize = Vector3(480, 170, 480)
+cloudsOffset = Vector3(100, 0, 0)
+windSpeed = Vector3(10, 3, 5)

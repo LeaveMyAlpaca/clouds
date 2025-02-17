@@ -39,8 +39,15 @@ float rayMarchStepSize;
 float alphaCutOff;
 float alphaModifier;
 float detailNoiseModifier;
+vec3 chunkSize;
+vec3 cloudsOffset;
+
 }
 cloudSettings;
+layout(set = 0, binding = 9, std430) restrict readonly buffer CloudsOffset {
+vec3 val;
+}
+cloudsOffset;
 
 struct Ray {
 vec3 origin;
@@ -136,12 +143,13 @@ return CreateRay(origin, direction);
 //? Noise sampling 
 
 vec3 ConvertWorldToNoiseTexturePosition(vec3 worldPos) {
-vec3 boxSize = boxBoundsMax.val - boxBoundsMin.val;
-vec3 scale = 1 / boxSize;
+vec3 scale = 1 / cloudSettings.chunkSize;
 
-vec3 noiseOffset = boxBoundsMin.val; // Use boxMin as the offset
+worldPos += cloudsOffset.val; // Use boxMin as the offset
 
-vec3 uv = (worldPos - noiseOffset) * scale;
+vec3 posInsideChuck = worldPos - floor(worldPos / cloudSettings.chunkSize) * cloudSettings.chunkSize;
+
+vec3 uv = (posInsideChuck) * scale;
 
 return uv;
 }
@@ -196,6 +204,7 @@ pixel.xyz *= SampleNoise(ray.origin + ray.direction * intersection.entryDistance
 vec2 noiseUv = gl_GlobalInvocationID.xy / (noiseSize.val.xy * (vec2(imageSize) / noiseSize.val.xy));
 
 pixel = texture(noiseSampler, vec3(noiseUv, 65)); */
+if(cloudsOffset.val == vec3(0, 0, 0)) pixel = vec4(0, 0, 0, 0);
 
 if(intersection.hit) {
 
@@ -212,6 +221,5 @@ pixel.w = clamp(alpha, 0, 1);
 }
 
 }
-
 imageStore(rendered_image, ivec2(gl_GlobalInvocationID.xy), pixel);
 }
