@@ -1,5 +1,8 @@
 #[compute]
 #version 450
+
+const float e_const = 2.718;
+
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 //? Buffers
 layout(set = 0, binding = 0, std430) restrict readonly buffer CameraData {
@@ -36,18 +39,24 @@ vec3 val;
 noiseSize;
 layout(set = 0, binding = 8, std430) restrict readonly buffer CloudSettings {
 float rayMarchStepSize;
-float alphaCutOff;
+float alphaCutOffTotal;
+float alphaCutOffSample;
 float alphaModifier;
+float alphaTotalModifier;
 float detailNoiseModifier;
-vec3 chunkSize;
-vec3 cloudsOffset;
 
 }
 cloudSettings;
+
 layout(set = 0, binding = 9, std430) restrict readonly buffer CloudsOffset {
 vec3 val;
 }
 cloudsOffset;
+
+layout(set = 0, binding = 10, std430) restrict readonly buffer CloudChunkSize {
+vec3 val;
+}
+cloudChunkSize;
 
 struct Ray {
 vec3 origin;
@@ -143,11 +152,11 @@ return CreateRay(origin, direction);
 //? Noise sampling 
 
 vec3 ConvertWorldToNoiseTexturePosition(vec3 worldPos) {
-vec3 scale = 1 / cloudSettings.chunkSize;
+vec3 scale = 1 / cloudChunkSize.val;
 
 worldPos += cloudsOffset.val; // Use boxMin as the offset
 
-vec3 posInsideChuck = worldPos - floor(worldPos / cloudSettings.chunkSize) * cloudSettings.chunkSize;
+vec3 posInsideChuck = worldPos - floor(worldPos / cloudChunkSize.val) * cloudChunkSize.val;
 
 vec3 uv = (posInsideChuck) * scale;
 
@@ -157,7 +166,7 @@ return uv;
 float SampleNoise(vec3 pos) {
 vec4 color = texture(noiseSampler, ConvertWorldToNoiseTexturePosition(pos));
 float density = (color.r * cloudSettings.detailNoiseModifier + color.g) / 2;
-if(density > cloudSettings.alphaCutOff) return density;
+if(density > cloudSettings.alphaCutOffSample) return density;
 return 0;
 }
 
@@ -199,11 +208,18 @@ if(intersection.hit) {
 pixel.w = (intersection.exitDistance - intersection.entryDistance) / 9;
 pixel.xyz *= SampleNoise(ray.origin + ray.direction * intersection.entryDistance);
 }   */
-
 /* // ?Noise texture debug
 vec2 noiseUv = gl_GlobalInvocationID.xy / (noiseSize.val.xy * (vec2(imageSize) / noiseSize.val.xy));
 
 pixel = texture(noiseSampler, vec3(noiseUv, 65)); */
+/* //? buffer value debug
+ if(cloudSettings.rayMarchStepSize != 0.1) pixel = vec4(1, 0, 0, 1);
+if(cloudSettings.alphaCutOffTotal != 0.25) pixel = vec4(0, 1, 0, 1);
+if(cloudSettings.alphaCutOffSample != 0.25) pixel = vec4(0, 0, 1, 1);
+if(cloudSettings.alphaModifier != 0.03) pixel = vec4(1, 1, 0, 1);
+if(cloudSettings.detailNoiseModifier != 0.01) pixel = vec4(1, 0, 1, 1);
+if(cloudChunkSize.val != vec3(480.0, 170.0, 480.0)) pixel = vec4(0, 1, 1, 1); */
+
 if(cloudsOffset.val == vec3(0, 0, 0)) pixel = vec4(0, 0, 0, 0);
 
 if(intersection.hit) {
@@ -213,13 +229,13 @@ float dist = intersection.exitDistance - intersection.entryDistance;
 vec3 direction = ray.direction;
 
 float density = SampleCloudDensity(origin, dist, direction);
-float alpha = cloudSettings.alphaModifier * density * cloudSettings.rayMarchStepSize;
-
-if(alpha > cloudSettings.alphaCutOff) {
-
-pixel.w = clamp(alpha, 0, 1);
+float alpha = cloudSettings.alphaModifier * density * cloudSettings.rayMarchStepSize * cloudSettings.alphaTotalModifier;
+if(alpha > cloudSettings.alphaCutOffTotal) {
+float transmittance = 1 - pow(e_const, - alpha);
+pixel.w = transmittance;
 }
 
 }
+
 imageStore(rendered_image, ivec2(gl_GlobalInvocationID.xy), pixel);
 }

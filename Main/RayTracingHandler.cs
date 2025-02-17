@@ -13,8 +13,12 @@ public partial class RayTracingHandler : Node
     [Export] Texture3D noiseTexture;
     [ExportGroup("Cloud settings")]
     [Export] float rayMarchStepSize;
-    [Export] float alphaCutOff;
+    [Export] float alphaCutOffTotal;
+    [Export] float alphaCutOffSample;
     [Export] float alphaModifier;
+    [Export]
+    float alphaTotalModifier;
+
     [Export] float detailNoiseModifier;
     [Export] Vector3 chunkSize;
     [Export] Vector3 cloudsOffset;
@@ -70,7 +74,7 @@ public partial class RayTracingHandler : Node
 
         pipeline = rd.ComputePipelineCreate(shader);
 
-        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform);
+        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform);
 
         RDUniform outputTextureUniform, noiseTextureUniform, noiseSizeUniform;
         InitNotChangingStartBuffers(out outputTextureUniform, out noiseTextureUniform, out noiseSizeUniform);
@@ -85,7 +89,8 @@ public partial class RayTracingHandler : Node
                 noiseTextureUniform,
                 noiseSizeUniform,
                 cloudSettingsUniform,
-                cloudOffsetUniform
+                cloudOffsetUniform,
+                cloudChuckUniform
             ];
 
         uniform_set = rd.UniformSetCreate(bindings, shader, 0);
@@ -161,7 +166,7 @@ public partial class RayTracingHandler : Node
     }
 
 
-    void InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform)
+    void InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform)
     {
         var camTransform = cam.GlobalTransform;
         List<byte> camMatrixBytes =
@@ -250,11 +255,12 @@ public partial class RayTracingHandler : Node
         List<byte> cloudSettingsBytes =
                       [
                           .. BitConverter.GetBytes(rayMarchStepSize),
-                          .. BitConverter.GetBytes(alphaCutOff),
+                          .. BitConverter.GetBytes(alphaCutOffTotal),
+                          .. BitConverter.GetBytes(alphaCutOffSample),
                           .. BitConverter.GetBytes(alphaModifier),
+                                                    .. BitConverter.GetBytes(alphaTotalModifier),
                           .. BitConverter.GetBytes(detailNoiseModifier),
                           .. Vec3AsBytes(chunkSize),
-                          .. Vec3AsBytes(cloudsOffset + windOffset) ,
 
         ];
         var cloudSettingsBuffer = rd.StorageBufferCreate((uint)cloudSettingsBytes.Count, cloudSettingsBytes.ToArray());
@@ -266,7 +272,10 @@ public partial class RayTracingHandler : Node
             Binding = 8
         };
         cloudSettingsUniform.AddId(cloudSettingsBuffer);
+
+
         //? 
+
 
         List<byte> cloudOffsetBytes =
                       [
@@ -282,6 +291,25 @@ public partial class RayTracingHandler : Node
             Binding = 9
         };
         cloudOffsetUniform.AddId(cloudOffsetBuffer);
+
+
+        // ? 
+
+
+        List<byte> cloudChuckBytes =
+                    [
+                        .. Vec3AsBytes(chunkSize)
+
+      ];
+        var cloudChuckBuffer = rd.StorageBufferCreate((uint)cloudChuckBytes.Count, cloudChuckBytes.ToArray());
+        cloudChuckUniform = new()
+        {
+
+            UniformType = RenderingDevice.UniformType.StorageBuffer,
+
+            Binding = 10
+        };
+        cloudChuckUniform.AddId(cloudChuckBuffer);
     }
 
 
@@ -293,7 +321,7 @@ public partial class RayTracingHandler : Node
         var initialRotation = cam.RotationDegrees;
         cam.RotationDegrees = new(-initialRotation.X, initialRotation.Y, initialRotation.Z);
 
-        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform);
+        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform);
 
         cam.RotationDegrees = initialRotation;
 
@@ -304,6 +332,7 @@ public partial class RayTracingHandler : Node
         bindings[5] = boundsMinUniform;
         bindings[8] = cloudSettingsUniform;
         bindings[9] = cloudOffsetUniform;
+        bindings[10] = cloudChuckUniform;
         uniform_set = rd.UniformSetCreate(bindings, shader, 0);
     }
 
