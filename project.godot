@@ -11,14 +11,25 @@ config_version=5
 [application]
 
 config/name="clouds"
-config/features=PackedStringArray("4.4", "Forward Plus")
-config/icon="res://icon.svg"
+run/main_scene="uid://bgnr33ubjk7rn"
+config/features=PackedStringArray("4.4", "C#", "Forward Plus")
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
 
 [dotnet]
 
-project/assembly_name="clouds"
+project/assembly_name="RayTracing"
 
-[rendering]
+[editor_plugins]
 
-environment/volumetric_fog/volume_size=256
-environment/volumetric_fog/volume_depth=256
+enabled=PackedStringArray("res://addons/noise_texture_composer/plugin.cfg")
+
+[file_customization]
+
+folder_colors={
+"res://Main/": "green",
+"res://addons/": "orange"
+}

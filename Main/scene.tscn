@@ -1,0 +1,41 @@
+[gd_scene load_steps=7 format=3 uid="uid://bgnr33ubjk7rn"]
+
+[ext_resource type="Script" uid="uid://dvng2yn1127pt" path="res://Main/RayTarget.cs" id="1_nxogm"]
+[ext_resource type="Script" uid="uid://cquiwo8d2yb8t" path="res://Main/RayTracingHandler.cs" id="2_3253y"]
+[ext_resource type="Script" uid="uid://7oi60kd7spx1" path="res://Main/free_look_camera.gd" id="2_m7jmp"]
+[ext_resource type="RDShaderFile" uid="uid://b1p4t6xhp3v00" path="res://Main/RayTracer.glsl" id="3_u3cyc"]
+[ext_resource type="Script" uid="uid://5upijui74uda" path="res://Main/ComputeOutput.cs" id="4_m7jmp"]
+[ext_resource type="ImageTexture3D" uid="uid://c6iproohmnehk" path="res://high resr noise.tres" id="6_jayku"]
+
+[node name="scene" type="Node3D"]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.45046, 0)
+
+[node name="Target" type="Node3D" parent="."]
+transform = Transform3D(80, 0, 0, 0, 80, 0, 0, 0, 80, 0, 0, -72.3542)
+script = ExtResource("1_nxogm")
+boxMin = Vector3(-40, -40, -112.354)
+boxMax = Vector3(40, 40, -32.3542)
+DrawDebug = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 11.7036)
+script = ExtResource("2_m7jmp")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="Camera3D"]
+
+[node name="output texture" type="TextureRect" parent="Camera3D/CanvasLayer"]
+offset_right = 1920.0
+offset_bottom = 1080.0
+script = ExtResource("4_m7jmp")
+
+[node name="ray tracing handler" type="Node3D" parent="Camera3D" node_paths=PackedStringArray("cam", "outputHandler", "rayTarget", "light")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 45.4541)
+script = ExtResource("2_3253y")
+cam = NodePath("..")
+outputHandler = NodePath("../CanvasLayer/output texture")
+shaderFile = ExtResource("3_u3cyc")
+rayTarget = NodePath("../../Target")
+light = NodePath("../../DirectionalLight3D")
+noiseTexture = ExtResource("6_jayku")

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="ComposedTexture3D" load_steps=7 format=3 uid="uid://bhskntiu30eh4"]
+
+[ext_resource type="Script" uid="uid://85lh3cxit20u" path="res://addons/noise_texture_composer/composed_texture3D.gd" id="1_nx3jk"]
+[ext_resource type="ImageTexture3D" uid="uid://c6iproohmnehk" path="res://high resr noise.tres" id="2_w8t1u"]
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_nx3jk"]
+noise_type = 2
+frequency = 0.0145
+fractal_octaves = 2
+
+[sub_resource type="NoiseTexture3D" id="NoiseTexture3D_w8t1u"]
+width = 1000
+height = 1000
+invert = true
+noise = SubResource("FastNoiseLite_nx3jk")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_8i30i"]
+frequency = 0.0456
+
+[sub_resource type="NoiseTexture3D" id="NoiseTexture3D_oj5wk"]
+width = 1000
+height = 1000
+noise = SubResource("FastNoiseLite_8i30i")
+
+[resource]
+script = ExtResource("1_nx3jk")
+image_format = 3
+texture_r = SubResource("NoiseTexture3D_oj5wk")
+texture_g = SubResource("NoiseTexture3D_w8t1u")
+output = ExtResource("2_w8t1u")
+metadata/_custom_type_script = ExtResource("1_nx3jk")
