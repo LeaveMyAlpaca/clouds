@@ -34,6 +34,12 @@ layout(set = 0, binding = 7, std430) restrict readonly buffer NoiseSize {
 vec3 val;
 }
 noiseSize;
+layout(set = 0, binding = 8, std430) restrict readonly buffer CloudSettings {
+float rayMarchStepSize;
+float alphaCutOff;
+float alphaModifier;
+}
+cloudSettings;
 
 struct Ray {
 vec3 origin;
@@ -144,6 +150,22 @@ vec4 color = texture(noiseSampler, ConvertWorldToNoiseTexturePosition(pos));
 return (color.r + color.g) / 2;
 }
 
+float SampleCloudDensity(vec3 origin, float dist, vec3 direction) {
+float steps = floor(dist / cloudSettings.rayMarchStepSize);
+
+// WHO THE F*** designed THIS FORMATTING!!!???? 
+float totalDensity = 0;
+for(int i = 0;
+i < steps;
+i ++) {
+float distanceFromOrigin = i * cloudSettings.rayMarchStepSize;
+vec3 samplePoint = origin + distanceFromOrigin * direction;
+totalDensity += SampleNoise(samplePoint);
+}
+
+return totalDensity;
+}
+
 //? Noise sampling end
 
 void main() {
@@ -161,15 +183,33 @@ uv.x *= aspect_ratio;
 Ray ray = CreateCameraRay(uv);
 RayBoxIntersection intersection = rayBoxIntersect(ray, boxBoundsMin.val, boxBoundsMax.val);
 
+/* // ? noise texture scaling on box debug
 if(intersection.hit) {
 pixel.w = (intersection.exitDistance - intersection.entryDistance) / 9;
 pixel.xyz *= SampleNoise(ray.origin + ray.direction * intersection.entryDistance);
-}  
+}   */
 
 /* // ?Noise texture debug
 vec2 noiseUv = gl_GlobalInvocationID.xy / (noiseSize.val.xy * (vec2(imageSize) / noiseSize.val.xy));
 
 pixel = texture(noiseSampler, vec3(noiseUv, 65)); */
+
+if(intersection.hit) {
+
+vec3 origin = ray.origin + ray.direction * intersection.entryDistance;
+float dist = intersection.exitDistance - intersection.entryDistance;
+vec3 direction = ray.direction;
+
+float density = SampleCloudDensity(origin, dist, direction);
+
+float alpha = cloudSettings.alphaModifier * density * cloudSettings.rayMarchStepSize;
+
+if(alpha > cloudSettings.alphaCutOff) {
+
+pixel.w = clamp(alpha, 0, 1);
+}
+
+}
 
 imageStore(rendered_image, ivec2(gl_GlobalInvocationID.xy), pixel);
 }

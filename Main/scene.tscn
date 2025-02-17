@@ -39,3 +39,6 @@ shaderFile = ExtResource("3_u3cyc")
 rayTarget = NodePath("../../Target")
 light = NodePath("../../DirectionalLight3D")
 noiseTexture = ExtResource("6_jayku")
+rayMarchStepSize = 0.1
+alphaCutOff = 0.1
+alphaModifier = 0.01

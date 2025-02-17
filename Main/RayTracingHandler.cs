@@ -11,6 +11,11 @@ public partial class RayTracingHandler : Node
     [Export] DirectionalLight3D light;
 
     [Export] Texture3D noiseTexture;
+    [ExportGroup("Cloud settings")]
+    [Export] float rayMarchStepSize;
+    [Export] float alphaCutOff;
+    [Export] float alphaModifier;
+
     Godot.Collections.Array<Image> noiseData;
 
     Vector3I noiseSize;
@@ -23,6 +28,11 @@ public partial class RayTracingHandler : Node
     Rid uniform_set;
     Rid outputTexture;
     Godot.Collections.Array<RDUniform> bindings;
+
+
+
+
+
 
     public override void _Ready()
     {
@@ -52,7 +62,7 @@ public partial class RayTracingHandler : Node
 
         pipeline = rd.ComputePipelineCreate(shader);
 
-        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform);
+        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform);
 
         RDUniform outputTextureUniform, noiseTextureUniform, noiseSizeUniform;
         InitNotChangingStartBuffers(out outputTextureUniform, out noiseTextureUniform, out noiseSizeUniform);
@@ -65,7 +75,8 @@ public partial class RayTracingHandler : Node
                 boundsMinUniform,
                 boundsMaxUniform,
                 noiseTextureUniform,
-                noiseSizeUniform
+                noiseSizeUniform,
+                cloudSettingsUniform
             ];
 
         uniform_set = rd.UniformSetCreate(bindings, shader, 0);
@@ -141,7 +152,7 @@ public partial class RayTracingHandler : Node
     }
 
 
-    void InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform)
+    void InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform)
     {
         var camTransform = cam.GlobalTransform;
         List<byte> camMatrixBytes =
@@ -225,8 +236,24 @@ public partial class RayTracingHandler : Node
 
 
 
+        //? 
 
+        List<byte> cloudSettingsBytes =
+                      [
+                          .. BitConverter.GetBytes(rayMarchStepSize),
+                          .. BitConverter.GetBytes(alphaCutOff),
+                          .. BitConverter.GetBytes(alphaModifier),
 
+        ];
+        var cloudSettingsBuffer = rd.StorageBufferCreate((uint)cloudSettingsBytes.Count, cloudSettingsBytes.ToArray());
+        cloudSettingsUniform = new()
+        {
+
+            UniformType = RenderingDevice.UniformType.StorageBuffer,
+
+            Binding = 8
+        };
+        cloudSettingsUniform.AddId(cloudSettingsBuffer);
 
     }
 
@@ -239,7 +266,7 @@ public partial class RayTracingHandler : Node
         var initialRotation = cam.RotationDegrees;
         cam.RotationDegrees = new(-initialRotation.X, initialRotation.Y, initialRotation.Z);
 
-        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform);
+        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform);
 
         cam.RotationDegrees = initialRotation;
 
@@ -248,7 +275,7 @@ public partial class RayTracingHandler : Node
         bindings[3] = timeUniform;
         bindings[4] = boundsMaxUniform;
         bindings[5] = boundsMinUniform;
-
+        bindings[8] = cloudSettingsUniform;
         uniform_set = rd.UniformSetCreate(bindings, shader, 0);
     }
 
