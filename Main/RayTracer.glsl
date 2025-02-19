@@ -1,8 +1,5 @@
 #[compute]
 #version 450
-
-const float e_const = 2.718;
-
 layout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;
 //? Buffers
 layout(set = 0, binding = 0, std430) restrict readonly buffer CameraData {
@@ -14,9 +11,11 @@ float CameraNearPlane;
 camera_data;
 
 layout(set = 0, binding = 1, std430) restrict readonly buffer DirectionalLight {
+  // xyz-poz 
+  // w-light energy
 vec4 data;
 }
-directional_light;
+directionalLight;
 
 layout(rgba32f, binding = 2) uniform image2D rendered_image;
 
@@ -44,9 +43,17 @@ float alphaCutOffSample;
 float alphaModifier;
 float alphaTotalModifier;
 float detailNoiseModifier;
-
+float lightAbsorptionThroughCloud;
+int lightMarchStepsCount;
+float darknessThreshold;
+float lightAbsorptionTowardSun;
+float alphaMax;
+float colorNoiseAlphaModifier;
+float colorNoiseScale;
 }
 cloudSettings;
+
+// end TODO 
 
 layout(set = 0, binding = 9, std430) restrict readonly buffer CloudsOffset {
 vec3 val;
@@ -57,6 +64,20 @@ layout(set = 0, binding = 10, std430) restrict readonly buffer CloudChunkSize {
 vec3 val;
 }
 cloudChunkSize;
+layout(set = 0, binding = 11, std430) restrict readonly buffer ColorBrightnessMinMax {
+vec2 val;
+}
+colorBrightnessMinMax;
+layout(set = 0, binding = 12, std430) restrict readonly buffer CloudColor {
+vec3 val;
+
+}
+cloudColor;
+layout(set = 0, binding = 13, std430) restrict readonly buffer LightColor {
+vec3 val;
+
+}
+lightColor;
 
 struct Ray {
 vec3 origin;
@@ -154,7 +175,7 @@ return CreateRay(origin, direction);
 vec3 ConvertWorldToNoiseTexturePosition(vec3 worldPos) {
 vec3 scale = 1 / cloudChunkSize.val;
 
-worldPos += cloudsOffset.val; // Use boxMin as the offset
+worldPos += cloudsOffset.val;
 
 vec3 posInsideChuck = worldPos - floor(worldPos / cloudChunkSize.val) * cloudChunkSize.val;
 
@@ -169,29 +190,81 @@ float density = (color.r * cloudSettings.detailNoiseModifier + color.g) / 2;
 if(density > cloudSettings.alphaCutOffSample) return density;
 return 0;
 }
+float SampleNoiseForColor(vec3 pos) {
+vec4 color = texture(noiseSampler, ConvertWorldToNoiseTexturePosition(pos * cloudSettings.colorNoiseScale));
+return (color.r + color.g * .1) / cloudSettings.colorNoiseAlphaModifier;
+}
+//? Noise sampling end
 
-float SampleCloudDensity(vec3 origin, float dist, vec3 direction) {
+// ? Light march
+
+float BeerLaw(float val) {
+return exp(- val);
+}
+
+float LightMarch(vec3 startPos) {
+vec3 dirToLight = directionalLight.data.xyz;
+vec3 samplePoint = startPos;
+Ray ray = CreateRay(samplePoint, dirToLight);
+
+RayBoxIntersection intersection = rayBoxIntersect(ray, boxBoundsMin.val, boxBoundsMax.val);
+
+float transmittance = 1;
+float stepSize = intersection.exitDistance / cloudSettings.lightMarchStepsCount;
+samplePoint += dirToLight * stepSize * .5;
+float totalDensity = 0;
+
+for(int i = 0;
+i < cloudSettings.lightMarchStepsCount;
+i ++) {
+float density = SampleNoise(samplePoint);
+totalDensity += density * stepSize;
+samplePoint += dirToLight * stepSize;
+}
+transmittance = BeerLaw(totalDensity * cloudSettings.lightAbsorptionTowardSun);
+float clampedTransmittance = cloudSettings.darknessThreshold + transmittance * (1 - cloudSettings.darknessThreshold);
+return clampedTransmittance;
+}
+
+// ? Light march end
+
+void RayMarchCloud(vec3 origin, float dist, vec3 direction, out vec3 lightEnergy, out float transmittance, out vec3 colorSamplePoint) {
+float phaseVal = 1;
+
 float steps = floor(dist / cloudSettings.rayMarchStepSize);
 
+transmittance = 1;
+lightEnergy = vec3(0, 0, 0);
+colorSamplePoint = vec3(0, 0, 0);
 // WHO THE F*** designed THIS FORMATTING!!!???? 
-float totalDensity = 0;
+// REALLY, idiot designed glsl extension for vsc
 for(int i = 0;
 i < steps;
 i ++) {
+
 float distanceFromOrigin = i * cloudSettings.rayMarchStepSize;
 vec3 samplePoint = origin + distanceFromOrigin * direction;
-totalDensity += SampleNoise(samplePoint);
+float density = SampleNoise(samplePoint);
+if(density > 0) {
+if(colorSamplePoint == vec3(0, 0, 0)) colorSamplePoint = samplePoint;
+  // skip no cloud regions to speed things up
+float lightTransmittance = LightMarch(samplePoint);
+lightEnergy += density * cloudSettings.rayMarchStepSize * transmittance * lightTransmittance * phaseVal;
+transmittance *= exp(- density * cloudSettings.rayMarchStepSize * cloudSettings.lightAbsorptionThroughCloud);
+if(transmittance < 0.01) {
+break;
 }
 
-return totalDensity;
 }
 
-//? Noise sampling end
+}
+
+}
 
 void main() {
 
 	// base pixel color for image
-vec4 pixel = vec4(1, 1, 1, 0);
+vec4 pixel = vec4(0, 0, 0, 0);
 
 ivec2 imageSize = imageSize(rendered_image);
 
@@ -202,6 +275,29 @@ uv.x *= aspect_ratio;
 
 Ray ray = CreateCameraRay(uv);
 RayBoxIntersection intersection = rayBoxIntersect(ray, boxBoundsMin.val, boxBoundsMax.val);
+
+if(intersection.hit) {
+vec3 origin = ray.origin + ray.direction * intersection.entryDistance;
+float dist = intersection.exitDistance - intersection.entryDistance;
+vec3 direction = ray.direction;
+
+vec3 lightEnergy;
+float transmittance;
+vec3 colorSamplePoint;
+// lightEnergy is just brightness so x==y==z
+RayMarchCloud(origin, dist, direction, lightEnergy, transmittance, colorSamplePoint);
+
+float alpha = cloudSettings.alphaModifier * (1 - transmittance) * cloudSettings.alphaTotalModifier;
+if(alpha > cloudSettings.alphaCutOffTotal) {
+pixel.w = min(alpha, cloudSettings.alphaMax);
+float brightness = lightEnergy.x;
+float clampedBrightness = clamp(brightness, colorBrightnessMinMax.val.x, colorBrightnessMinMax.val.y);
+pixel.xyz = vec3(clampedBrightness, clampedBrightness, clampedBrightness) * lightColor.val;
+pixel.xyz *= cloudColor.val;
+pixel.xyz *= SampleNoiseForColor(colorSamplePoint);
+}
+
+}
 
 /* // ? noise texture scaling on box debug
 if(intersection.hit) {
@@ -219,23 +315,6 @@ if(cloudSettings.alphaCutOffSample != 0.25) pixel = vec4(0, 0, 1, 1);
 if(cloudSettings.alphaModifier != 0.03) pixel = vec4(1, 1, 0, 1);
 if(cloudSettings.detailNoiseModifier != 0.01) pixel = vec4(1, 0, 1, 1);
 if(cloudChunkSize.val != vec3(480.0, 170.0, 480.0)) pixel = vec4(0, 1, 1, 1); */
-
-if(cloudsOffset.val == vec3(0, 0, 0)) pixel = vec4(0, 0, 0, 0);
-
-if(intersection.hit) {
-
-vec3 origin = ray.origin + ray.direction * intersection.entryDistance;
-float dist = intersection.exitDistance - intersection.entryDistance;
-vec3 direction = ray.direction;
-
-float density = SampleCloudDensity(origin, dist, direction);
-float alpha = cloudSettings.alphaModifier * density * cloudSettings.rayMarchStepSize * cloudSettings.alphaTotalModifier;
-if(alpha > cloudSettings.alphaCutOffTotal) {
-float transmittance = 1 - pow(e_const, - alpha);
-pixel.w = transmittance;
-}
-
-}
 
 imageStore(rendered_image, ivec2(gl_GlobalInvocationID.xy), pixel);
 }

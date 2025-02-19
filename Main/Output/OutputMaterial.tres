@@ -1,0 +1,11 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3 uid="uid://b0e57yv3p553u"]
+
+[ext_resource type="Shader" uid="uid://btv2u1aja1gm4" path="res://Main/Output/outputShader.gdshader" id="1_gikge"]
+[ext_resource type="Texture2D" uid="uid://wlif6wkw4syd" path="res://Main/Output/clear.png" id="2_qqvqy"]
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_gikge")
+shader_parameter/cloudRenderDepth = 100.0
+shader_parameter/textureToOutput = ExtResource("2_qqvqy")
+shader_parameter/test = 0.0

@@ -1,11 +1,11 @@
 using Godot;
 using System;
 using System.Collections.Generic;
-
 public partial class RayTracingHandler : Node
 {
+    [Export] bool pause;
     [Export] Camera3D cam;
-    [Export] ComputeOutput outputHandler;
+    [Export] ShaderMaterial output;
     [Export] RDShaderFile shaderFile;
     [Export] RayTarget rayTarget;
     [Export] DirectionalLight3D light;
@@ -16,10 +16,21 @@ public partial class RayTracingHandler : Node
     [Export] float alphaCutOffTotal;
     [Export] float alphaCutOffSample;
     [Export] float alphaModifier;
+    [Export] float detailNoiseModifier;
     [Export]
     float alphaTotalModifier;
+    [Export]
+    float lightAbsorptionThroughCloud;
+    [Export] int lightMarchStepsCount;
+    [Export] float darknessThreshold;
+    [Export] float lightAbsorptionTowardSun;
+    [Export] float alphaMax = .95f;
+    [Export] float colorNoiseAlphaModifier = 2;
+    [Export] float colorNoiseScale = 20;
+    [Export] Color lightColor;
+    [Export] Color cloudColor;
+    [Export] Vector2 colorBrightnessMinMax = new(.1f, .95f);
 
-    [Export] float detailNoiseModifier;
     [Export] Vector3 chunkSize;
     [Export] Vector3 cloudsOffset;
     [Export] Vector3 windSpeed;
@@ -55,6 +66,9 @@ public partial class RayTracingHandler : Node
 
     public override void _Process(double delta)
     {
+        if (pause)
+            return;
+
         windOffset += windSpeed * (float)delta;
         UpdateBuffers();
         Render();
@@ -74,7 +88,7 @@ public partial class RayTracingHandler : Node
 
         pipeline = rd.ComputePipelineCreate(shader);
 
-        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform);
+        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform, out RDUniform colorBrightUniform, out RDUniform cloudColorUniform, out RDUniform lightColorUniform);
 
         RDUniform outputTextureUniform, noiseTextureUniform, noiseSizeUniform;
         InitNotChangingStartBuffers(out outputTextureUniform, out noiseTextureUniform, out noiseSizeUniform);
@@ -90,7 +104,10 @@ public partial class RayTracingHandler : Node
                 noiseSizeUniform,
                 cloudSettingsUniform,
                 cloudOffsetUniform,
-                cloudChuckUniform
+                cloudChuckUniform,
+                colorBrightUniform,
+                cloudColorUniform,
+                lightColorUniform
             ];
 
         uniform_set = rd.UniformSetCreate(bindings, shader, 0);
@@ -166,7 +183,7 @@ public partial class RayTracingHandler : Node
     }
 
 
-    void InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform)
+    void InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform, out RDUniform colorBrightUniform, out RDUniform cloudColorUniform, out RDUniform lightColorUniform)
     {
         var camTransform = cam.GlobalTransform;
         List<byte> camMatrixBytes =
@@ -252,16 +269,20 @@ public partial class RayTracingHandler : Node
 
         //? 
 
-        List<byte> cloudSettingsBytes =
-                      [
+        List<byte> cloudSettingsBytes = [
                           .. BitConverter.GetBytes(rayMarchStepSize),
                           .. BitConverter.GetBytes(alphaCutOffTotal),
                           .. BitConverter.GetBytes(alphaCutOffSample),
                           .. BitConverter.GetBytes(alphaModifier),
-                                                    .. BitConverter.GetBytes(alphaTotalModifier),
+                          .. BitConverter.GetBytes(alphaTotalModifier),
                           .. BitConverter.GetBytes(detailNoiseModifier),
-                          .. Vec3AsBytes(chunkSize),
-
+                          .. BitConverter.GetBytes(lightAbsorptionThroughCloud),
+                          .. BitConverter.GetBytes(lightMarchStepsCount),
+                          .. BitConverter.GetBytes(darknessThreshold),
+                          .. BitConverter.GetBytes(lightAbsorptionTowardSun),
+                          .. BitConverter.GetBytes(alphaMax),
+                          .. BitConverter.GetBytes(colorNoiseAlphaModifier),
+                          .. BitConverter.GetBytes(colorNoiseScale),
         ];
         var cloudSettingsBuffer = rd.StorageBufferCreate((uint)cloudSettingsBytes.Count, cloudSettingsBytes.ToArray());
         cloudSettingsUniform = new()
@@ -310,6 +331,64 @@ public partial class RayTracingHandler : Node
             Binding = 10
         };
         cloudChuckUniform.AddId(cloudChuckBuffer);
+
+        // ? 
+
+
+        List<byte> colorBrightnessBytes =
+                    [
+                        .. BitConverter.GetBytes(colorBrightnessMinMax.X), .. BitConverter.GetBytes(colorBrightnessMinMax.Y)
+
+      ];
+        var colorBrightBuffer = rd.StorageBufferCreate((uint)colorBrightnessBytes.Count, colorBrightnessBytes.ToArray());
+        colorBrightUniform = new()
+        {
+
+            UniformType = RenderingDevice.UniformType.StorageBuffer,
+
+            Binding = 11
+        };
+        colorBrightUniform.AddId(colorBrightBuffer);
+
+
+
+
+        // ? 
+
+
+        List<byte> cloudColorBytes =
+                    [
+                        .. Vec3AsBytes(new(cloudColor.R,cloudColor.G,cloudColor.B))
+
+      ];
+        var cloudColorBuffer = rd.StorageBufferCreate((uint)cloudColorBytes.Count, cloudColorBytes.ToArray());
+        cloudColorUniform = new()
+        {
+
+            UniformType = RenderingDevice.UniformType.StorageBuffer,
+
+            Binding = 12
+        };
+        cloudColorUniform.AddId(cloudColorBuffer);
+
+        // ? 
+
+
+        List<byte> lightColorBytes =
+                    [
+                        .. Vec3AsBytes(new(lightColor.R,lightColor.G,lightColor.B))
+
+      ];
+        var lightColorBuffer = rd.StorageBufferCreate((uint)lightColorBytes.Count, lightColorBytes.ToArray());
+        lightColorUniform = new()
+        {
+
+            UniformType = RenderingDevice.UniformType.StorageBuffer,
+
+            Binding = 13
+        };
+        lightColorUniform.AddId(lightColorBuffer);
+
     }
 
 
@@ -321,7 +400,7 @@ public partial class RayTracingHandler : Node
         var initialRotation = cam.RotationDegrees;
         cam.RotationDegrees = new(-initialRotation.X, initialRotation.Y, initialRotation.Z);
 
-        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform);
+        InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform, out RDUniform colorBrightUniform, out RDUniform cloudColorUniform, out RDUniform lightColorUniform);
 
         cam.RotationDegrees = initialRotation;
 
@@ -333,6 +412,9 @@ public partial class RayTracingHandler : Node
         bindings[8] = cloudSettingsUniform;
         bindings[9] = cloudOffsetUniform;
         bindings[10] = cloudChuckUniform;
+        bindings[11] = colorBrightUniform;
+        bindings[12] = cloudColorUniform;
+        bindings[13] = lightColorUniform;
         uniform_set = rd.UniformSetCreate(bindings, shader, 0);
     }
 
@@ -347,7 +429,9 @@ public partial class RayTracingHandler : Node
         //! Maybe change later, to wait for a bit?
         rd.Sync();
         byte[] byteData = rd.TextureGetData(outputTexture, 0);
-        outputHandler.SetDataToImage(byteData, imageSize);
+        var image = Image.CreateFromData(imageSize.X, imageSize.Y, false, Image.Format.Rgbaf, byteData);
+        var imageTexture = ImageTexture.CreateFromImage(image);
+        output.SetShaderParameter("textureToOutput", imageTexture);
     }
 
 

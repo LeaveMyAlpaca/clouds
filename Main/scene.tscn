@@ -1,11 +1,15 @@
-[gd_scene load_steps=7 format=3 uid="uid://bgnr33ubjk7rn"]
+[gd_scene load_steps=8 format=3 uid="uid://bgnr33ubjk7rn"]
 
 [ext_resource type="Script" uid="uid://dvng2yn1127pt" path="res://Main/RayTarget.cs" id="1_nxogm"]
-[ext_resource type="Script" uid="uid://cquiwo8d2yb8t" path="res://Main/RayTracingHandler.cs" id="2_3253y"]
+[ext_resource type="Script" uid="uid://dsh2tjd3truas" path="res://Main/RayTracingHandler.cs" id="2_3253y"]
 [ext_resource type="Script" uid="uid://7oi60kd7spx1" path="res://Main/free_look_camera.gd" id="2_m7jmp"]
-[ext_resource type="RDShaderFile" uid="uid://b1p4t6xhp3v00" path="res://Main/RayTracer.glsl" id="3_u3cyc"]
-[ext_resource type="Script" uid="uid://5upijui74uda" path="res://Main/ComputeOutput.cs" id="4_m7jmp"]
+[ext_resource type="RDShaderFile" uid="uid://b18jx5y0125bo" path="res://Main/RayTracer.glsl" id="3_u3cyc"]
+[ext_resource type="Material" uid="uid://b0e57yv3p553u" path="res://Main/Output/OutputMaterial.tres" id="4_tqduk"]
 [ext_resource type="ImageTexture3D" uid="uid://dkfwwab226yti" path="res://noise 3d.tres" id="6_jayku"]
+
+[sub_resource type="QuadMesh" id="QuadMesh_fokd8"]
+flip_faces = true
+size = Vector2(2, 2)
 
 [node name="scene" type="Node3D"]
 
@@ -23,28 +27,33 @@ DrawDebug = true
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 11.7036)
 script = ExtResource("2_m7jmp")
 
-[node name="CanvasLayer" type="CanvasLayer" parent="Camera3D"]
-
-[node name="output texture" type="TextureRect" parent="Camera3D/CanvasLayer"]
-offset_right = 1920.0
-offset_bottom = 1080.0
-script = ExtResource("4_m7jmp")
-
-[node name="ray tracing handler" type="Node3D" parent="Camera3D" node_paths=PackedStringArray("cam", "outputHandler", "rayTarget", "light")]
+[node name="ray tracing handler" type="Node3D" parent="Camera3D" node_paths=PackedStringArray("cam", "rayTarget", "light")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 45.4541)
 script = ExtResource("2_3253y")
 cam = NodePath("..")
-outputHandler = NodePath("../CanvasLayer/output texture")
+output = ExtResource("4_tqduk")
 shaderFile = ExtResource("3_u3cyc")
 rayTarget = NodePath("../../Target")
 light = NodePath("../../DirectionalLight3D")
 noiseTexture = ExtResource("6_jayku")
 rayMarchStepSize = 0.1
 alphaCutOffTotal = 0.001
-alphaCutOffSample = 0.25
+alphaCutOffSample = 0.265
 alphaModifier = 0.03
-alphaTotalModifier = 1.0
 detailNoiseModifier = 0.02
+alphaTotalModifier = 22.77
+lightAbsorptionThroughCloud = 0.215
+lightMarchStepsCount = 3
+darknessThreshold = 0.1
+lightAbsorptionTowardSun = 0.1
+colorNoiseScale = 0.545
+lightColor = Color(0.886262, 0.886261, 0.886262, 0)
+cloudColor = Color(1, 1, 1, 0)
 chunkSize = Vector3(1000, 300, 1000)
 cloudsOffset = Vector3(100, 0, 0)
 windSpeed = Vector3(10, 3, 5)
+
+[node name="output" type="MeshInstance3D" parent="Camera3D"]
+extra_cull_margin = 16384.0
+mesh = SubResource("QuadMesh_fokd8")
+surface_material_override/0 = ExtResource("4_tqduk")
