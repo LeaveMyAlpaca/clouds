@@ -1,5 +1,3 @@
 # clouds
 
-## TODO
-
-- better noise generation
+## TODO XD
