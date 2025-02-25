@@ -29,7 +29,7 @@ else if(cellPos.x == resolutionInCells.val.x) X = 0;
 else X = cellPos.x;
 
 float Y;
-if(cellPos.x == - 1) Y = resolutionInCells.val.y - 1;
+if(cellPos.y == - 1) Y = resolutionInCells.val.y - 1;
 else if(cellPos.y == resolutionInCells.val.y) Y = 0;
 else Y = cellPos.y;
 
@@ -103,8 +103,27 @@ float brightness = min(1, dist * points.distanceModifier);
 if(points.invert) brightness = 1 - brightness;
 
 vec4 pixel = vec4(brightness, brightness, brightness, 1);
+
+// ! debug
+/* 
+vec3 debugPos = vec3(10, 0, 0);
+vec3[27] debugCells = GetCellsToCheck(pixelToCell(debugPos));
+bool showDebug = false;
+for(int i = 0;
+i < 27;
+i ++) {
+if(cellPos == WrapCellPos(debugCells[i])) {
+showDebug = true;
+break;
+}
+}
+if(showDebug) pixel = vec4(0, 1, 0, 1);
+if(pixelToCell(debugPos) == cellPos) pixel = vec4(1, 0, 0, 1);
+
+ */// if(WrapCellPos(vec3(5, 5, 5)) == vec3(0, 0, 0)) pixel = vec4(1, 1, 0, 1);
 // 
 // if(cellPos == WrapCellPos(debugCellPos)) pixel = vec4(1, 0, 0, 1);
 // pixel = texture(randomPoints, cellPosToTextureUv(cellPos));
+// ! debug end
 imageStore(rendered_image, ivec3(gl_GlobalInvocationID.xyz), pixel);
 }
