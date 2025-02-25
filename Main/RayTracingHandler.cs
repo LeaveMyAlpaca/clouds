@@ -27,6 +27,7 @@ public partial class RayTracingHandler : Node
     [Export] float alphaMax = .95f;
     [Export] float colorNoiseAlphaModifier = 2;
     [Export] float colorNoiseScale = 20;
+    [Export] float brightnessModifier;
     [Export] Color lightColor;
     [Export] Color cloudColor;
     [Export] Vector2 colorBrightnessMinMax = new(.1f, .95f);
@@ -136,8 +137,8 @@ public partial class RayTracingHandler : Node
 
         // ?
 
-        RDSamplerState sampler_state = new();
-        var sampler = rd.SamplerCreate(sampler_state);
+        RDSamplerState samplerState = new();
+        var sampler = rd.SamplerCreate(samplerState);
 
         Godot.Collections.Array<Image> images = noiseTexture.GetData();
         foreach (var item in images)
@@ -283,6 +284,7 @@ public partial class RayTracingHandler : Node
                           .. BitConverter.GetBytes(alphaMax),
                           .. BitConverter.GetBytes(colorNoiseAlphaModifier),
                           .. BitConverter.GetBytes(colorNoiseScale),
+                          .. BitConverter.GetBytes(brightnessModifier),
         ];
         var cloudSettingsBuffer = rd.StorageBufferCreate((uint)cloudSettingsBytes.Count, cloudSettingsBytes.ToArray());
         cloudSettingsUniform = new()

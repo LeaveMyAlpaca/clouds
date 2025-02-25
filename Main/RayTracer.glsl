@@ -50,6 +50,7 @@ float lightAbsorptionTowardSun;
 float alphaMax;
 float colorNoiseAlphaModifier;
 float colorNoiseScale;
+float brightnessModifier;
 }
 cloudSettings;
 
@@ -192,7 +193,7 @@ return 0;
 }
 float SampleNoiseForColor(vec3 pos) {
 vec4 color = texture(noiseSampler, ConvertWorldToNoiseTexturePosition(pos * cloudSettings.colorNoiseScale));
-return (color.r + color.g * .1) / cloudSettings.colorNoiseAlphaModifier;
+return (color.r) * cloudSettings.colorNoiseAlphaModifier;
 }
 //? Noise sampling end
 
@@ -290,11 +291,11 @@ RayMarchCloud(origin, dist, direction, lightEnergy, transmittance, colorSamplePo
 float alpha = cloudSettings.alphaModifier * (1 - transmittance) * cloudSettings.alphaTotalModifier;
 if(alpha > cloudSettings.alphaCutOffTotal) {
 pixel.w = min(alpha, cloudSettings.alphaMax);
-float brightness = lightEnergy.x;
+float brightness = lightEnergy.x * cloudSettings.brightnessModifier;
 float clampedBrightness = clamp(brightness, colorBrightnessMinMax.val.x, colorBrightnessMinMax.val.y);
 pixel.xyz = vec3(clampedBrightness, clampedBrightness, clampedBrightness) * lightColor.val;
 pixel.xyz *= cloudColor.val;
-pixel.xyz *= SampleNoiseForColor(colorSamplePoint);
+pixel.xyz += SampleNoiseForColor(colorSamplePoint);
 }
 
 }
