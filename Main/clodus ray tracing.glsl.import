@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://b18jx5y0125bo"
+path="res://.godot/imported/clodus ray tracing.glsl-722b68850d59860e1f65e2dc08f117a8.res"
+
+[deps]
+
+source_file="res://Main/clodus ray tracing.glsl"
+dest_files=["res://.godot/imported/clodus ray tracing.glsl-722b68850d59860e1f65e2dc08f117a8.res"]
+
+[params]
+

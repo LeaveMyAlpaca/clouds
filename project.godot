@@ -25,7 +25,7 @@ project/assembly_name="RayTracing"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/noise_texture_composer/plugin.cfg")
+enabled=PackedStringArray()
 
 [file_customization]
 
