@@ -138,6 +138,7 @@ public partial class RayTracingHandler : Node
         // ?
 
         RDSamplerState samplerState = new();
+        samplerState.MagFilter = RenderingDevice.SamplerFilter.Linear;
         var sampler = rd.SamplerCreate(samplerState);
 
         Godot.Collections.Array<Image> images = noiseTexture.GetData();
