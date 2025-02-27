@@ -4,5 +4,6 @@ I based it on my [ray tracing]() implementation
 # features⚡️
 - reading depth texture for output 
 - custom Worley noise generation compute shader
-- all handling classes written in c#
-
+- custom texture composer
+- all handling classes are written in c#
+- highly customizable with settings
