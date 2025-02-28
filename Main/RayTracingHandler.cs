@@ -187,6 +187,8 @@ public partial class RayTracingHandler : Node
 
     void InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform, out RDUniform colorBrightUniform, out RDUniform cloudColorUniform, out RDUniform lightColorUniform)
     {
+        //  flip z rotation
+        cam.GlobalRotation *= new Vector3(1, 1, -1);
         var camTransform = cam.GlobalTransform;
         List<byte> camMatrixBytes =
         [
@@ -203,6 +205,8 @@ public partial class RayTracingHandler : Node
         };
         camMatrixUniform.AddId(camMatrixBuffer);
 
+        //  flip back z rotation
+        cam.GlobalRotation *= new Vector3(1, 1, -1);
         //? 
 
         Vector3 lightDirection = -light.GlobalBasis.Z.Normalized();
