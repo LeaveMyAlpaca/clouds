@@ -13,6 +13,8 @@ public partial class RayTracingHandler : Node
     [Export] Texture3D noiseTexture;
     [ExportGroup("Cloud settings")]
     [Export] float rayMarchStepSize;
+    [Export] int maxRaySampleCount;
+
     [Export] float alphaCutOffTotal;
     [Export] float alphaCutOffSample;
     [Export] float alphaModifier;
@@ -315,6 +317,7 @@ public partial class RayTracingHandler : Node
                           .. BitConverter.GetBytes(colorNoiseAlphaModifier),
                           .. BitConverter.GetBytes(colorNoiseScale),
                           .. BitConverter.GetBytes(brightnessModifier),
+                          .. BitConverter.GetBytes(maxRaySampleCount)
         ];
         var cloudSettingsBuffer = rd.StorageBufferCreate((uint)cloudSettingsBytes.Count, cloudSettingsBytes.ToArray());
         cloudSettingsUniform = new()

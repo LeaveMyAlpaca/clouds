@@ -52,6 +52,8 @@ float alphaMax;
 float colorNoiseAlphaModifier;
 float colorNoiseScale;
 float brightnessModifier;
+int maxSampleCount;
+
 }
 cloudSettings;
 
@@ -235,8 +237,8 @@ return clampedTransmittance;
 void RayMarchCloud(vec3 origin, float dist, vec3 direction, out vec3 lightEnergy, out float transmittance, out vec3 colorSamplePoint) {
 float phaseVal = 1;
 
-float steps = floor(dist / cloudSettings.rayMarchStepSize);
-
+int steps = int(floor(dist / cloudSettings.rayMarchStepSize));
+steps = min(steps, cloudSettings.maxSampleCount);
 transmittance = 1;
 lightEnergy = vec3(0, 0, 0);
 colorSamplePoint = vec3(0, 0, 0);
