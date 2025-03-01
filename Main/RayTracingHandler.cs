@@ -50,6 +50,7 @@ public partial class RayTracingHandler : Node
 
     Rid uniform_set;
     Rid outputTexture;
+    Rid depthTexture;
     Godot.Collections.Array<RDUniform> bindings;
 
 
@@ -91,8 +92,8 @@ public partial class RayTracingHandler : Node
 
         InitBuffers(out RDUniform camMatrixUniform, out RDUniform boundsMinUniform, out RDUniform boundsMaxUniform, out RDUniform lightDirectionUniform, out RDUniform timeUniform, out RDUniform cloudSettingsUniform, out RDUniform cloudOffsetUniform, out RDUniform cloudChuckUniform, out RDUniform colorBrightUniform, out RDUniform cloudColorUniform, out RDUniform lightColorUniform);
 
-        RDUniform outputTextureUniform, noiseTextureUniform, noiseSizeUniform;
-        InitNotChangingStartBuffers(out outputTextureUniform, out noiseTextureUniform, out noiseSizeUniform);
+        RDUniform outputTextureUniform, noiseTextureUniform, noiseSizeUniform, depthTextureUniform;
+        InitNotChangingStartBuffers(out outputTextureUniform, out noiseTextureUniform, out noiseSizeUniform, out depthTextureUniform);
 
         bindings = [
                 camMatrixUniform,
@@ -108,13 +109,14 @@ public partial class RayTracingHandler : Node
                 cloudChuckUniform,
                 colorBrightUniform,
                 cloudColorUniform,
-                lightColorUniform
+                lightColorUniform,
+                depthTextureUniform
             ];
 
         uniform_set = rd.UniformSetCreate(bindings, shader, 0);
     }
 
-    private void InitNotChangingStartBuffers(out RDUniform outputTextureUniform, out RDUniform noiseTextureUniform, out RDUniform noiseSizeUniform)
+    private void InitNotChangingStartBuffers(out RDUniform outputTextureUniform, out RDUniform noiseTextureUniform, out RDUniform noiseSizeUniform, out RDUniform depthTextureUniform)
     {
         RDTextureFormat outputFmt = new()
         {
@@ -182,6 +184,29 @@ public partial class RayTracingHandler : Node
             Binding = 7
         };
         noiseSizeUniform.AddId(noiseSizeBuffer);
+
+        // ?
+
+
+        RDTextureFormat depthFmt = new()
+        {
+            Width = (uint)imageSize.X,
+            Height = (uint)imageSize.Y,
+            Format = RenderingDevice.DataFormat.R32Sfloat,
+            UsageBits = RenderingDevice.TextureUsageBits.CanUpdateBit | RenderingDevice.TextureUsageBits.StorageBit | RenderingDevice.TextureUsageBits.CanCopyFromBit
+        };
+        RDTextureView depthView = new();
+        Image depthImage = Image.CreateEmpty(imageSize.X, imageSize.Y, false, Image.Format.Rf);
+        depthTexture = rd.TextureCreate(depthFmt, depthView, [depthImage.GetData()]);
+        depthTextureUniform = new()
+        {
+            UniformType = RenderingDevice.UniformType.Image,
+            Binding = 14
+        };
+        depthTextureUniform.AddId(depthTexture);
+
+
+
     }
 
 
@@ -435,10 +460,16 @@ public partial class RayTracingHandler : Node
         rd.Submit();
         //! Maybe change later, to wait for a bit?
         rd.Sync();
-        byte[] byteData = rd.TextureGetData(outputTexture, 0);
-        var image = Image.CreateFromData(imageSize.X, imageSize.Y, false, Image.Format.Rgbaf, byteData);
-        var imageTexture = ImageTexture.CreateFromImage(image);
-        output.SetShaderParameter("textureToOutput", imageTexture);
+        byte[] outputByteData = rd.TextureGetData(outputTexture, 0);
+        var outputImage = Image.CreateFromData(imageSize.X, imageSize.Y, false, Image.Format.Rgbaf, outputByteData);
+        var outputImageTexture = ImageTexture.CreateFromImage(outputImage);
+        output.SetShaderParameter("textureToOutput", outputImageTexture);
+
+
+        byte[] depthByteData = rd.TextureGetData(depthTexture, 0);
+        var depthImage = Image.CreateFromData(imageSize.X, imageSize.Y, false, Image.Format.Rf, depthByteData);
+        var depthImageTexture = ImageTexture.CreateFromImage(depthImage);
+        output.SetShaderParameter("cloudsDepth", depthImageTexture);
     }
 
 
